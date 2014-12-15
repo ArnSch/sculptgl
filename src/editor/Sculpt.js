@@ -92,7 +92,7 @@ define([
         return;
       this.sculptTimer_ = window.setInterval(function () {
         main.getReplayWriter().pushUpdateContinuous();
-        tool.update(main);
+        tool.updateContinuous(main);
         main.render();
       }, 16.6);
     },

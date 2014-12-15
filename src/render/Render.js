@@ -14,7 +14,7 @@ define([
     this.shaderWireframe_ = new Shader(gl); // the program shader for the wireframe
 
     this.flatShading_ = false; // use of drawArrays vs drawElements
-    this.showWireframe_ = true; // show wireframe
+    this.showWireframe_ = false; // show wireframe
 
     this.vertexBuffer_ = new Buffer(gl, gl.ARRAY_BUFFER, gl.DYNAMIC_DRAW); // vertices buffer
     this.normalBuffer_ = new Buffer(gl, gl.ARRAY_BUFFER, gl.DYNAMIC_DRAW); // normals buffer
@@ -29,7 +29,7 @@ define([
     this.exposure_ = 1.0;
     // these material values overrides the vertex attributes
     // it's here for debug or preview
-    this.albedo_ = [-1.0, -1.0, -1.0];
+    this.albedo_ = new Float32Array([-1.0, -1.0, -1.0]);
     this.roughness_ = -0.18;
     this.metallic_ = -0.78;
   }

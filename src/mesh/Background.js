@@ -1,8 +1,7 @@
 define([
   'render/Buffer',
-  'render/Attribute',
   'render/Shader'
-], function (Buffer, Attribute, Shader) {
+], function (Buffer, Shader) {
 
   'use strict';
 
@@ -46,10 +45,6 @@ define([
         this.gl_.deleteTexture(this.backgroundLoc_);
       this.getVertexBuffer().release();
       this.getTexCoordBuffer().release();
-    },
-    /** Return the configuration of the shader */
-    getConfig: function () {
-      return Shader[Shader.mode.BACKGROUND];
     },
     /** Initialize Vertex Buffer Object (VBO) */
     initBuffer: function () {

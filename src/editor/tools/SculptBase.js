@@ -7,6 +7,8 @@ define([
   function SculptBase(states) {
     this.states_ = states; // for undo-redo
     this.mesh_ = null; // the current edited mesh
+    this.lastMouseX_ = 0.0;
+    this.lastMouseY_ = 0.0;
   }
 
   SculptBase.prototype = {
@@ -23,6 +25,8 @@ define([
       }
       this.mesh_ = mesh;
       this.pushState();
+      this.lastMouseX_ = main.mouseX_;
+      this.lastMouseY_ = main.mouseY_;
       this.startSculpt(main);
     },
     /** Push undo operation */
@@ -38,60 +42,66 @@ define([
       this.sculptStroke(main);
     },
     /** Make a brush stroke */
-    sculptStroke: function (main, colorState) {
-      var mesh = this.mesh_;
-      var mouseX = main.mouseX_;
-      var mouseY = main.mouseY_;
+    sculptStroke: function (main) {
       var picking = main.getPicking();
-      var pickingSym = main.getPickingSymmetry();
-      var lx = main.lastMouseX_;
-      var ly = main.lastMouseY_;
-      var dx = mouseX - lx;
-      var dy = mouseY - ly;
+      var pickingSym = main.getSculpt().getSymmetry() ? main.getPickingSymmetry() : null;
+
+      var dx = main.mouseX_ - this.lastMouseX_;
+      var dy = main.mouseY_ - this.lastMouseY_;
       var dist = Math.sqrt(dx * dx + dy * dy);
-      main.sumDisplacement_ += dist;
-      var sumDisp = main.sumDisplacement_;
       var minSpacing = 0.15 * picking.getScreenRadius();
-      var step = dist / Math.floor(dist / minSpacing);
-      dx /= dist;
-      dy /= dist;
-      if (!main.continuous_) {
-        mouseX = lx;
-        mouseY = ly;
-      } else {
-        sumDisp = 0.0;
-        dist = 0.0;
+
+      if (dist <= minSpacing)
+        return;
+
+      var step = 1.0 / Math.floor(dist / minSpacing);
+      dx *= step;
+      dy *= step;
+      var mouseX = this.lastMouseX_;
+      var mouseY = this.lastMouseY_;
+
+      for (var i = 0.0; i <= 1.0; i += step) {
+        if (!this.makeStroke(mouseX, mouseY, picking, pickingSym))
+          break;
+        mouseX += dx;
+        mouseY += dy;
       }
-      var sym = main.getSculpt().getSymmetry();
-      if (sumDisp > minSpacing || sumDisp === 0.0) {
-        sumDisp = 0.0;
-        for (var i = 0; i <= dist; i += step) {
-          picking.intersectionMouseMesh(mesh, mouseX, mouseY);
-          if (!picking.getMesh())
-            break;
-          picking.pickVerticesInSphere(picking.getLocalRadius2());
-          this.stroke(picking);
-          if (sym) {
-            pickingSym.intersectionMouseMesh(mesh, mouseX, mouseY, true);
-            if (!pickingSym.getMesh())
-              break;
-            pickingSym.setLocalRadius2(picking.getLocalRadius2());
-            pickingSym.pickVerticesInSphere(pickingSym.getLocalRadius2());
-            this.stroke(pickingSym, true);
-          }
-          mouseX += dx * step;
-          mouseY += dy * step;
-        }
-        if (main.getMesh().getDynamicTopology) {
-          main.getMesh().updateBuffers();
-        } else if (colorState) {
-          main.getMesh().updateColorBuffer();
-          main.getMesh().updateMaterialBuffer();
-        } else {
-          main.getMesh().updateGeometryBuffers();
-        }
+
+      this.updateMeshBuffers(main);
+
+      this.lastMouseX_ = main.mouseX_;
+      this.lastMouseY_ = main.mouseY_;
+    },
+    makeStroke: function (mouseX, mouseY, picking, pickingSym) {
+      var mesh = this.mesh_;
+      picking.intersectionMouseMesh(mesh, mouseX, mouseY);
+      if (!picking.getMesh())
+        return false;
+      picking.pickVerticesInSphere(picking.getLocalRadius2());
+      this.stroke(picking);
+
+      if (pickingSym) {
+        pickingSym.intersectionMouseMesh(mesh, mouseX, mouseY, true);
+        if (!pickingSym.getMesh())
+          return false;
+        pickingSym.setLocalRadius2(picking.getLocalRadius2());
+        pickingSym.pickVerticesInSphere(pickingSym.getLocalRadius2());
+        this.stroke(pickingSym, true);
       }
-      main.sumDisplacement_ = sumDisp;
+      return true;
+    },
+    updateMeshBuffers: function (main) {
+      if (main.getMesh().getDynamicTopology)
+        main.getMesh().updateBuffers();
+      else
+        main.getMesh().updateGeometryBuffers();
+      main.render();
+    },
+    updateContinuous: function (main) {
+      var picking = main.getPicking();
+      var pickingSym = main.getSculpt().getSymmetry() ? main.getPickingSymmetry() : null;
+      this.makeStroke(main.mouseX_, main.mouseY_, picking, pickingSym);
+      this.updateMeshBuffers(main);
     },
     /** Return the vertices that point toward the camera */
     getFrontVertices: function (iVertsInRadius, eyeDir) {
